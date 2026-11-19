@@ -1,0 +1,20 @@
+{
+  "trial": "bench-14",
+  "stations": ["A", "B"],
+  "terminals": ["X", "Y"],
+  "request": ["X", "Y"],
+  "observations": {
+    "A": [
+      {"record_id": "link-x", "left": ["public", "X"], "right": ["local", "u"], "relation": "same", "kind": "hard"},
+      {"record_id": "link-y", "left": ["local", "u"], "right": ["public", "Y"], "relation": "same", "kind": "hard"}
+    ],
+    "B": [
+      {"record_id": "check-xy", "left": ["public", "X"], "right": ["public", "Y"], "relation": "different", "kind": "soft", "weight": 1}
+    ]
+  },
+  "correction": {"station": "A", "record_id": "link-y", "relation": "different"},
+  "expected": {
+    "before": {"minimum_cost": 1, "pairs": [[0, 0], [1, 1]]},
+    "after": {"minimum_cost": 0, "pairs": [[0, 1], [1, 0]]}
+  }
+}
