@@ -1,10 +1,14 @@
 from dataclasses import dataclass
 import sqlite3
 
+from evidence.revisions import read_revision
 from evidence.terminals import require_identifier
+from evidence.waiver_policy import load_waiver_policy
 from ledger_transaction import initialize_tables, write_transaction
 from station.audit import audit_revision
 from station.package import encode_package, freeze_package
+from station.waiver_analysis import analyze_waiver_revision
+from station.waiver_package import encode_waiver_package, freeze_waiver_package
 
 _SCHEMA = (
     '''CREATE TABLE IF NOT EXISTS issued_packages (
@@ -67,3 +71,30 @@ def read_issued_package(db: sqlite3.Connection, package_id: str) -> tuple[str, I
         return None
     wire, trial_id, station_id, revision = row
     return wire, IssueReceipt(package_id, trial_id, station_id, revision)
+
+
+def issue_waiver_package(db: sqlite3.Connection, trial_id: str, station_id: str,
+                         revision: int) -> tuple[str, IssueReceipt]:
+    """Freeze a V2 package bound to the exact revision and the full waiver policy."""
+    audited = audit_revision(db, trial_id, station_id, revision)
+    policy = load_waiver_policy(db, trial_id)
+    if policy is None:
+        raise KeyError(('waiver-policy', trial_id))
+    analysis = analyze_waiver_revision(
+        read_revision(db, trial_id, station_id, revision), policy,
+    )
+    with write_transaction(db):
+        issue_number, = db.execute('SELECT COALESCE(MAX(issue_number), 0) + 1 FROM issued_packages').fetchone()
+        package = freeze_waiver_package(audited, policy, analysis, issue_number)
+        wire = encode_waiver_package(package)
+        source = package.source
+        receipt = IssueReceipt(package.package_id, source.trial_id, source.station_id, source.revision)
+        db.execute(
+            'INSERT INTO issued_packages (issue_number, package_id, wire) VALUES (?, ?, ?)',
+            (issue_number, receipt.package_id, wire),
+        )
+        db.execute(
+            'INSERT INTO issue_receipts (package_id, trial_id, station_id, revision) VALUES (?, ?, ?, ?)',
+            (receipt.package_id, receipt.trial_id, receipt.station_id, receipt.revision),
+        )
+    return wire, receipt

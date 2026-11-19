@@ -5,6 +5,7 @@ import sqlite3
 
 from evidence.observations import Observation
 from evidence.terminals import EndpointRef, PublicCatalog
+from evidence.waiver_policy import _SCHEMA as _WAIVER_SCHEMA
 from ledger_transaction import initialize_tables, write_transaction
 
 _SCHEMA = (
@@ -24,7 +25,7 @@ _SCHEMA = (
         FOREIGN KEY (trial_id, station_id, parent_revision)
             REFERENCES station_revisions(trial_id, station_id, revision)
     )''',
-)
+) + _WAIVER_SCHEMA
 
 
 @dataclass(frozen=True)
@@ -89,6 +90,7 @@ def _decode_observations(encoded: str) -> tuple[Observation, ...]:
         observations.append(Observation(
             record['record_id'], EndpointRef(**record['left']), EndpointRef(**record['right']),
             record['relation'], record['kind'], None if weight is None else int(Decimal(weight)),
+            record.get('fee_group'),
         ))
     return tuple(observations)
 

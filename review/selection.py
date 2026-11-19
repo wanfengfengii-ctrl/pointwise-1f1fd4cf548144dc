@@ -19,6 +19,8 @@ def select_packages(db: sqlite3.Connection, left_id: str, right_id: str) -> Revi
     right = get_accepted_package(db, right_id)
     if right is None:
         raise KeyError(right_id)
+    if getattr(left, 'version', 1) != 1 or getattr(right, 'version', 1) != 1:
+        raise ValueError('sign_report accepts V1 packages only')
     if left.catalog.trial_id != right.catalog.trial_id:
         raise ValueError('packages belong to different trials')
     if left.station_id == right.station_id:

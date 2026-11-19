@@ -130,6 +130,9 @@ def main():
     sample = json.loads(path.read_text(encoding='utf-8'))
     with TemporaryDirectory() as directory:
         run_demo(sample, Path(directory))
+    from waiver_demo import run_waiver_demo
+    with TemporaryDirectory() as directory:
+        run_waiver_demo(Path(directory))
 
 
 if __name__ == '__main__':

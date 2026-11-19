@@ -19,6 +19,7 @@ class Observation:
     relation: str
     kind: str
     weight: int | None = None
+    fee_group: str | None = None
 
 
 @dataclass(frozen=True)
@@ -29,11 +30,17 @@ class EvidenceChange:
 
 
 def _validate_observation(catalog: PublicCatalog, station_id: str,
-                          row: Observation) -> None:
+                          row: Observation, declared_groups: frozenset[str]) -> None:
     resolve_endpoint(catalog, station_id, row.left)
     resolve_endpoint(catalog, station_id, row.right)
     if row.relation not in ('same', 'different'):
         raise ValueError('relation must be same or different')
+    if row.fee_group is not None:
+        if row.kind != 'soft':
+            raise ValueError('only soft evidence can belong to a fee group')
+        require_identifier(row.fee_group, 'fee group')
+        if row.fee_group not in declared_groups:
+            raise ValueError(f'fee group is not declared for the trial: {row.fee_group}')
     if row.kind == 'hard' and row.weight is None:
         return
     if row.kind == 'soft' and type(row.weight) is int and row.weight > 0:
@@ -42,7 +49,9 @@ def _validate_observation(catalog: PublicCatalog, station_id: str,
 
 
 def validate_changes(catalog: PublicCatalog, station_id: str,
-                     changes: list[EvidenceChange] | tuple[EvidenceChange, ...]) -> None:
+                     changes: list[EvidenceChange] | tuple[EvidenceChange, ...],
+                     declared_groups: frozenset[str] | None = None) -> None:
+    groups = frozenset() if declared_groups is None else declared_groups
     if not isinstance(changes, (list, tuple)) or not changes:
         raise ValueError('a nonempty evidence batch is required')
     seen = set()
@@ -60,7 +69,7 @@ def validate_changes(catalog: PublicCatalog, station_id: str,
         row = change.observation
         if not isinstance(row, Observation) or row.record_id != record_id:
             raise ValueError('change and observation must have the same record identifier')
-        _validate_observation(catalog, station_id, row)
+        _validate_observation(catalog, station_id, row, groups)
 
 
 def apply_changes(base: tuple[Observation, ...],

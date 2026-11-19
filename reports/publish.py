@@ -14,3 +14,15 @@ def publish_report(db: sqlite3.Connection, conclusion: ReviewConclusion) -> tupl
     )
     receipt = commit_report(db, snapshot)
     return snapshot, receipt
+
+
+def publish_waiver_report(db: sqlite3.Connection, conclusion: ReviewConclusion, policy,
+                          waived_groups: tuple[str, ...],
+                          sources: tuple[ReportSource, ReportSource]) -> tuple[ReportSnapshot, PublishReceipt]:
+    policy_value = policy.as_registration() if hasattr(policy, 'as_registration') else policy
+    snapshot = build_report_snapshot(
+        conclusion.selection.trial_id, conclusion.terminals, conclusion.minimum_cost,
+        conclusion.pairs, sources, policy_value, waived_groups,
+    )
+    receipt = commit_report(db, snapshot)
+    return snapshot, receipt

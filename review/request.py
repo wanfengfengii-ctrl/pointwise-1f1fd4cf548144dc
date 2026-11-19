@@ -21,3 +21,10 @@ def sign_report(db: sqlite3.Connection, left_id: str, right_id: str,
     if minimum is None:
         raise NoCommonExplanation('the two packages have no common hard-feasible state')
     return publish_report(db, build_conclusion(aligned, minimum))
+
+
+def sign_waiver_report(db: sqlite3.Connection, left_id: str, right_id: str,
+                       terminals: tuple[str, ...] | list[str],
+                       waived_groups: list[str] | tuple[str, ...]):
+    from review.waiver_request import sign_waiver_report as _sign
+    return _sign(db, left_id, right_id, terminals, waived_groups)
